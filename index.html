@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas of Scent</title>
+<meta name="description" content="A personal fragrance atlas — where each scent takes you.">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Atlas of Scent">
+<meta name="theme-color" content="#7a2f2a">
+<link rel="icon" href="./icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ece0c8;
+    --paper-2: #e3d5b8;
+    --ink: #2c2117;
+    --ink-soft: #5b4d3c;
+    --ink-faint: #8a7a63;
+    --line: rgba(44,33,23,0.16);
+    --card-bg: #f4ecd9;
+    --accent: #7a2f2a;
+
+    /* customizable fragrance-wheel family colors — edit freely */
+    --f-woody: #8a6a45;
+    --f-floral: #b9647a;
+    --f-oriental-amber: #b5721f;
+    --f-fresh-citrus: #c79a1e;
+    --f-fresh-green: #708a4e;
+    --f-fresh-aquatic: #3f8592;
+    --f-leather: #6e3d3d;
+    --f-gourmand: #b56b3f;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    background-image:
+      radial-gradient(ellipse at top left, rgba(255,255,255,0.35), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(0,0,0,0.05), transparent 60%);
+    color: var(--ink);
+    font-family: 'Newsreader', Georgia, serif;
+    min-height: 100vh;
+    padding-bottom: 4rem;
+  }
+
+  a { color: inherit; }
+
+  header {
+    padding: 2.6rem 1.5rem 1.2rem;
+    text-align: center;
+  }
+  header h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5vw, 3rem);
+    letter-spacing: 0.01em;
+    margin: 0 0 0.35rem;
+  }
+  header p.tagline {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .toolbar {
+    max-width: 1100px;
+    margin: 1.6rem auto 0;
+    padding: 0 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+  }
+  .chip {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.4);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .chip[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .chip.tab { font-weight: 600; }
+
+  .search-row {
+    max-width: 1100px;
+    margin: 0.9rem auto 0;
+    padding: 0 1.2rem;
+    display: flex;
+    justify-content: center;
+  }
+  .search-row input {
+    font-family: 'Newsreader', serif;
+    font-size: 0.95rem;
+    padding: 0.5rem 0.9rem;
+    width: min(360px, 90vw);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.5);
+    color: var(--ink);
+  }
+  .search-row input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  main {
+    max-width: 1100px;
+    margin: 2rem auto 0;
+    padding: 0 1.2rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 1.1rem;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.9rem 0.9rem 1rem;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(44,33,23,0.06);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(44,33,23,0.12); }
+  .card .family-bar {
+    position: absolute;
+    top: 0; left: 14px; right: 14px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+  }
+  .card .photo-wrap {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--paper-2);
+    margin-bottom: 0.65rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card .photo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+  .card .brand {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.15rem;
+  }
+  .card .name {
+    font-family: 'Fraunces', serif;
+    font-size: 1.08rem;
+    line-height: 1.25;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+  .card .meta-row {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+  }
+  .stars { letter-spacing: 1px; color: var(--accent); }
+
+  .empty-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+
+  /* Detail overlay */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,15,10,0.55);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2.2rem 1rem;
+    overflow-y: auto;
+    z-index: 50;
+  }
+  .overlay[hidden] { display: none; }
+  .detail {
+    background: var(--paper);
+    max-width: 640px;
+    width: 100%;
+    border-radius: 18px;
+    padding: 1.8rem 1.8rem 2.4rem;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  .detail .close-btn {
+    position: absolute; top: 1rem; right: 1.1rem;
+    font-family: 'Inter', sans-serif;
+    background: none; border: none; font-size: 1.4rem;
+    color: var(--ink-soft); cursor: pointer; line-height: 1;
+  }
+  .detail-top { display: flex; gap: 1.3rem; margin-bottom: 1.1rem; }
+  .detail-photo {
+    width: 130px; flex-shrink: 0;
+    aspect-ratio: 3/4;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--paper-2);
+  }
+  .detail-photo img { width: 100%; height: 100%; object-fit: contain; }
+  .detail-heading .brand {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .detail-heading .name {
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem; font-weight: 600; line-height: 1.15;
+    margin: 0.15rem 0 0.5rem;
+  }
+  .family-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: 'Inter', sans-serif; font-size: 0.72rem;
+    padding: 0.22rem 0.6rem; border-radius: 999px;
+    background: rgba(255,255,255,0.5); border: 1px solid var(--line);
+    color: var(--ink-soft);
+  }
+  .family-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .rating-row { margin-top: 0.5rem; font-family: 'Inter', sans-serif; font-size: 0.8rem; color: var(--ink-soft); }
+
+  .section { margin-top: 1.35rem; }
+  .section h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.4rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section p, .section .notes-line {
+    font-size: 0.98rem; line-height: 1.55;
+    margin: 0;
+  }
+  .notes-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.7rem;
+    font-family: 'Inter', sans-serif; font-size: 0.85rem;
+  }
+  .notes-grid dt { color: var(--ink-faint); }
+  .notes-grid dd { margin: 0; }
+  .notes-source {
+    font-family: 'Inter', sans-serif; font-size: 0.68rem; color: var(--ink-faint);
+    margin-top: 0.3rem; font-style: italic;
+  }
+
+  .atlas-field { position: relative; }
+  .atlas-field .field-text {
+    min-height: 1.6rem;
+    white-space: pre-wrap;
+  }
+  .atlas-field .field-text.placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .atlas-field textarea {
+    width: 100%;
+    font-family: 'Newsreader', serif;
+    font-size: 0.98rem;
+    line-height: 1.5;
+    color: var(--ink);
+    background: rgba(255,255,255,0.55);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    resize: vertical;
+    min-height: 3.2rem;
+  }
+  .edit-toggle {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    background: none; border: none; cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+  }
+  .inhabit-select {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.5);
+  }
+  .save-status {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    margin-left: 0.5rem;
+  }
+
+  .links-row {
+    margin-top: 1.4rem;
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    font-family: 'Inter', sans-serif; font-size: 0.78rem;
+  }
+  .links-row a { text-decoration: underline; color: var(--ink-soft); }
+
+  .buying-line {
+    font-family: 'Inter', sans-serif; font-size: 0.8rem; color: var(--ink-soft);
+  }
+
+  .wishlist-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+  .wishlist-list li {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 0.8rem;
+  }
+  .wishlist-list .wl-name { font-family: 'Fraunces', serif; font-size: 1rem; }
+  .wishlist-list .wl-brand { font-family: 'Inter', sans-serif; font-size: 0.68rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .wishlist-list .wl-note { font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--ink-soft); }
+  .acquired-toggle {
+    font-family: 'Inter', sans-serif; font-size: 0.7rem;
+    padding: 0.28rem 0.6rem; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(255,255,255,0.5);
+    cursor: pointer; color: var(--ink-soft); white-space: nowrap;
+  }
+  .acquired-toggle[data-on="true"] { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+
+  footer.discounts {
+    max-width: 1100px; margin: 3rem auto 0; padding: 1.2rem;
+    font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--ink-faint);
+    text-align: center; border-top: 1px solid var(--line);
+  }
+
+  .legend-panel {
+    max-width: 1100px; margin: 0.9rem auto 0; padding: 0 1.2rem;
+    display: none;
+  }
+  .legend-panel[data-open="true"] { display: block; }
+  .legend-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+    gap: 0.5rem 1rem;
+    background: rgba(255,255,255,0.35);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.9rem 1.1rem;
+    font-family: 'Inter', sans-serif; font-size: 0.78rem;
+  }
+  .legend-grid label { display: flex; align-items: center; gap: 0.5rem; color: var(--ink-soft); }
+  .legend-grid input[type=color] { width: 22px; height: 22px; border: none; background: none; padding: 0; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Atlas of Scent</h1>
+  <p class="tagline">a private map of where each scent takes you</p>
+</header>
+
+<div class="toolbar" id="tabs">
+  <button class="chip tab" data-tab="fragrances" data-active="true">Collection</button>
+  <button class="chip tab" data-tab="wishlist">Wishlist</button>
+  <button class="chip" id="legend-toggle">Colors ⚙︎</button>
+</div>
+
+<div class="toolbar" id="family-filters"></div>
+
+<div class="search-row">
+  <input type="text" id="search" placeholder="Search brand or name…">
+</div>
+
+<div class="legend-panel" id="legend-panel">
+  <div class="legend-grid" id="legend-grid"></div>
+</div>
+
+<main>
+  <section id="view-fragrances">
+    <div class="grid" id="grid"></div>
+    <p class="empty-note" id="empty-note" hidden>Nothing matches — try a different filter or search.</p>
+  </section>
+
+  <section id="view-wishlist" hidden>
+    <ul class="wishlist-list" id="wishlist-list"></ul>
+  </section>
+</main>
+
+<footer class="discounts" id="discounts"></footer>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="detail" id="detail"></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://ptffodgnvegflqtvmoaj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_esYq_2ILOaBOv9LDKYpMCg_jSOePCDK';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const BUCKET = 'bottle-photos';
+
+const FAMILY_LABELS = {
+  'woody': 'Woody',
+  'floral': 'Floral',
+  'oriental-amber': 'Oriental / Amber',
+  'fresh-citrus': 'Fresh Citrus',
+  'fresh-green': 'Fresh Green',
+  'fresh-aquatic': 'Fresh Aquatic',
+  'leather': 'Leather',
+  'gourmand': 'Gourmand',
+};
+const FAMILY_KEYS = Object.keys(FAMILY_LABELS);
+const COLOR_STORE_KEY = 'atlas-family-colors';
+
+function loadColors() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLOR_STORE_KEY) || '{}');
+    FAMILY_KEYS.forEach((k) => {
+      const css = getComputedStyle(document.documentElement).getPropertyValue(`--f-${k}`).trim();
+      const val = saved[k] || css;
+      document.documentElement.style.setProperty(`--f-${k}`, val);
+    });
+  } catch (e) { /* ignore, use defaults */ }
+}
+function familyColor(key) {
+  return getComputedStyle(document.documentElement).getPropertyValue(`--f-${key}`).trim() || '#8a7a63';
+}
+function saveColor(key, val) {
+  document.documentElement.style.setProperty(`--f-${key}`, val);
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(COLOR_STORE_KEY) || '{}'); } catch (e) {}
+  saved[key] = val;
+  try { localStorage.setItem(COLOR_STORE_KEY, JSON.stringify(saved)); } catch (e) {}
+}
+
+loadColors();
+
+let fragrances = [];
+let wishlist = [];
+let activeFamily = null;
+let searchTerm = '';
+
+function photoUrl(path) {
+  if (!path) return '';
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+}
+
+function stars(rating) {
+  if (rating === null || rating === undefined) return '';
+  const full = Math.round(rating);
+  return '★'.repeat(full) + '☆'.repeat(5 - full);
+}
+
+async function loadData() {
+  const [{ data: fragData, error: fragErr }, { data: wlData, error: wlErr }, { data: discData }] =
+    await Promise.all([
+      supabase.from('fragrances').select('*').order('sort_order', { ascending: true }),
+      supabase.from('wishlist').select('*').order('created_at', { ascending: true }),
+      supabase.from('discount_notes').select('*'),
+    ]);
+  if (fragErr) console.error(fragErr);
+  if (wlErr) console.error(wlErr);
+  fragrances = fragData || [];
+  wishlist = wlData || [];
+  renderFilters();
+  renderGrid();
+  renderWishlist();
+  renderDiscounts(discData || []);
+}
+
+function renderFilters() {
+  const bar = document.getElementById('family-filters');
+  bar.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'chip';
+  allChip.textContent = 'All families';
+  allChip.dataset.active = activeFamily === null ? 'true' : 'false';
+  allChip.onclick = () => { activeFamily = null; renderFilters(); renderGrid(); };
+  bar.appendChild(allChip);
+
+  FAMILY_KEYS.forEach((key) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.dataset.active = activeFamily === key ? 'true' : 'false';
+    chip.innerHTML = `<span class="dot" style="background:${familyColor(key)}"></span>${FAMILY_LABELS[key]}`;
+    chip.onclick = () => { activeFamily = activeFamily === key ? null : key; renderFilters(); renderGrid(); };
+    bar.appendChild(chip);
+  });
+
+  // legend swatches
+  const legend = document.getElementById('legend-grid');
+  legend.innerHTML = '';
+  FAMILY_KEYS.forEach((key) => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = rgbToHex(familyColor(key));
+    input.oninput = (e) => { saveColor(key, e.target.value); renderFilters(); renderGrid(); };
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(FAMILY_LABELS[key]));
+    legend.appendChild(label);
+  });
+}
+
+function rgbToHex(color) {
+  if (color.startsWith('#')) return color;
+  const m = color.match(/\d+/g);
+  if (!m) return '#8a7a63';
+  return '#' + m.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const emptyNote = document.getElementById('empty-note');
+  grid.innerHTML = '';
+  const term = searchTerm.trim().toLowerCase();
+  const filtered = fragrances.filter((f) => {
+    if (activeFamily && f.family !== activeFamily) return false;
+    if (term && !(`${f.brand} ${f.name}`.toLowerCase().includes(term))) return false;
+    return true;
+  });
+  emptyNote.hidden = filtered.length > 0;
+
+  filtered.forEach((f) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => openDetail(f);
+    card.innerHTML = `
+      <div class="family-bar" style="background:${familyColor(f.family)}"></div>
+      <div class="photo-wrap">${f.photo_path ? `<img src="${photoUrl(f.photo_path)}" alt="${f.name} bottle" loading="lazy">` : ''}</div>
+      <div class="brand">${escapeHtml(f.brand)}</div>
+      <div class="name">${escapeHtml(f.name)}</div>
+      <div class="meta-row">
+        <span class="stars">${stars(f.rating)}</span>
+        <span>${escapeHtml(f.category || '')}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function fieldBlock(label, key, frag, placeholder) {
+  const val = frag[key];
+  const id = `field-${key}-${frag.id}`;
+  return `
+    <div class="section atlas-field" data-key="${key}" data-id="${frag.id}">
+      <h3>${label} <button class="edit-toggle" data-action="edit">${val ? 'edit' : 'add'}</button></h3>
+      <div class="field-text ${val ? '' : 'placeholder'}" data-view>${val ? escapeHtml(val) : placeholder}</div>
+    </div>
+  `;
+}
+
+function openDetail(frag) {
+  const detail = document.getElementById('detail');
+  const notesSource = frag.notes_source === 'fragrantica' ? 'Notes via Fragrantica' : (frag.notes_source === 'own' ? 'Notes from your own impression' : '');
+  const hasNotes = frag.top_notes || frag.heart_notes || frag.base_notes;
+
+  const buyingParts = [];
+  if (frag.rrp) buyingParts.push(`RRP £${frag.rrp}`);
+  if (frag.avg_price && frag.avg_price != frag.rrp) buyingParts.push(`avg seen £${frag.avg_price}`);
+  if (frag.discount_note) buyingParts.push(frag.discount_note);
+
+  detail.innerHTML = `
+    <button class="close-btn" id="close-detail" aria-label="Close">&times;</button>
+    <div class="detail-top">
+      <div class="detail-photo">${frag.photo_path ? `<img src="${photoUrl(frag.photo_path)}" alt="${frag.name} bottle">` : ''}</div>
+      <div class="detail-heading">
+        <div class="brand">${escapeHtml(frag.brand)}</div>
+        <div class="name">${escapeHtml(frag.name)}</div>
+        <span class="family-pill"><span class="dot" style="background:${familyColor(frag.family)}"></span>${FAMILY_LABELS[frag.family] || frag.family}</span>
+        <div class="rating-row">${stars(frag.rating)} &nbsp;·&nbsp; ${escapeHtml(frag.category || '')}${frag.perfumer ? ' · ' + escapeHtml(frag.perfumer) : ''}</div>
+      </div>
+    </div>
+
+    ${hasNotes ? `
+    <div class="section">
+      <h3>Notes</h3>
+      <dl class="notes-grid">
+        ${frag.top_notes ? `<dt>Top</dt><dd>${escapeHtml(frag.top_notes)}</dd>` : ''}
+        ${frag.heart_notes ? `<dt>Heart</dt><dd>${escapeHtml(frag.heart_notes)}</dd>` : ''}
+        ${frag.base_notes ? `<dt>Base</dt><dd>${escapeHtml(frag.base_notes)}</dd>` : ''}
+      </dl>
+      ${notesSource ? `<div class="notes-source">${notesSource}</div>` : ''}
+    </div>` : ''}
+
+    ${frag.summary ? `<div class="section"><h3>Your summary</h3><p>${escapeHtml(frag.summary)}</p></div>` : ''}
+
+    ${fieldBlock('Where does this take me?', 'where_place', frag, 'Not written yet — click "add" to reflect.')}
+    ${fieldBlock('What’s the weather?', 'weather', frag, 'Not written yet.')}
+    ${fieldBlock('Who lives here?', 'who_lives_here', frag, 'Not written yet.')}
+    ${fieldBlock('Who am I when I wear it?', 'who_am_i', frag, 'Not written yet.')}
+    ${fieldBlock('What does it draw out of me?', 'draws_out', frag, 'Not written yet.')}
+
+    <div class="section">
+      <h3>Would I want to spend a whole day here?</h3>
+      <select class="inhabit-select" id="inhabit-select" data-id="${frag.id}">
+        <option value="" ${!frag.inhabit ? 'selected' : ''}>Not decided</option>
+        <option value="visit" ${frag.inhabit === 'visit' ? 'selected' : ''}>Visit — lovely, wouldn't live there</option>
+        <option value="live" ${frag.inhabit === 'live' ? 'selected' : ''}>Live — I'd want to spend a whole day in this</option>
+      </select>
+      <span class="save-status" id="inhabit-status"></span>
+    </div>
+
+    ${buyingParts.length ? `<div class="section"><h3>Buying</h3><div class="buying-line">${buyingParts.map(escapeHtml).join(' · ')}</div></div>` : ''}
+
+    <div class="links-row">
+      ${frag.source_url ? `<a href="${frag.source_url}" target="_blank" rel="noopener">Brand page ↗</a>` : ''}
+      ${frag.fragrantica_url ? `<a href="${frag.fragrantica_url}" target="_blank" rel="noopener">Fragrantica ↗</a>` : ''}
+    </div>
+  `;
+
+  document.getElementById('close-detail').onclick = closeDetail;
+  detail.querySelectorAll('.atlas-field').forEach((section) => {
+    const btn = section.querySelector('[data-action="edit"]');
+    btn.onclick = () => startEdit(section, frag);
+  });
+  const inhabitSel = document.getElementById('inhabit-select');
+  inhabitSel.onchange = async () => {
+    const status = document.getElementById('inhabit-status');
+    status.textContent = 'saving…';
+    const { error } = await supabase.from('fragrances').update({ inhabit: inhabitSel.value || null }).eq('id', frag.id);
+    frag.inhabit = inhabitSel.value || null;
+    const local = fragrances.find(f => f.id === frag.id);
+    if (local) local.inhabit = frag.inhabit;
+    status.textContent = error ? 'error saving' : 'saved';
+    setTimeout(() => { status.textContent = ''; }, 1500);
+  };
+
+  document.getElementById('overlay').hidden = false;
+}
+
+function startEdit(section, frag) {
+  const key = section.dataset.key;
+  const viewEl = section.querySelector('[data-view]');
+  const current = frag[key] || '';
+  const textarea = document.createElement('textarea');
+  textarea.value = current;
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'edit-toggle';
+  saveBtn.textContent = 'save';
+  saveBtn.style.marginLeft = '0.6rem';
+  const status = document.createElement('span');
+  status.className = 'save-status';
+
+  viewEl.replaceWith(textarea);
+  const btnRow = document.createElement('div');
+  btnRow.style.marginTop = '0.4rem';
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(status);
+  textarea.after(btnRow);
+
+  saveBtn.onclick = async () => {
+    status.textContent = 'saving…';
+    const newVal = textarea.value.trim();
+    const { error } = await supabase.from('fragrances').update({ [key]: newVal || null }).eq('id', frag.id);
+    if (error) { status.textContent = 'error saving'; return; }
+    frag[key] = newVal || null;
+    const local = fragrances.find(f => f.id === frag.id);
+    if (local) local[key] = frag[key];
+    status.textContent = 'saved';
+    setTimeout(() => openDetail(frag), 500);
+  };
+}
+
+function closeDetail() {
+  document.getElementById('overlay').hidden = true;
+}
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'overlay') closeDetail();
+});
+
+function renderWishlist() {
+  const list = document.getElementById('wishlist-list');
+  list.innerHTML = '';
+  wishlist.forEach((w) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div>
+        <div class="wl-brand">${escapeHtml(w.brand || '')}</div>
+        <div class="wl-name">${escapeHtml(w.name)}</div>
+        ${w.note ? `<div class="wl-note">${escapeHtml(w.note)}</div>` : ''}
+      </div>
+      <button class="acquired-toggle" data-on="${w.acquired}">${w.acquired ? 'Acquired' : 'Mark acquired'}</button>
+    `;
+    const btn = li.querySelector('.acquired-toggle');
+    btn.onclick = async () => {
+      const newVal = !w.acquired;
+      const { error } = await supabase.from('wishlist').update({ acquired: newVal }).eq('id', w.id);
+      if (!error) { w.acquired = newVal; renderWishlist(); }
+    };
+    list.appendChild(li);
+  });
+}
+
+function renderDiscounts(discounts) {
+  const footer = document.getElementById('discounts');
+  if (!discounts.length) { footer.textContent = ''; return; }
+  footer.textContent = discounts.map(d => `${d.brand}: ${d.note}`).join('   ·   ');
+}
+
+// Tabs
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.dataset.active = 'false');
+  btn.dataset.active = 'true';
+  const tab = btn.dataset.tab;
+  document.getElementById('view-fragrances').hidden = tab !== 'fragrances';
+  document.getElementById('view-wishlist').hidden = tab !== 'wishlist';
+  document.getElementById('family-filters').style.display = tab === 'fragrances' ? 'flex' : 'none';
+  document.querySelector('.search-row').style.display = tab === 'fragrances' ? 'flex' : 'none';
+});
+
+document.getElementById('legend-toggle').addEventListener('click', () => {
+  const panel = document.getElementById('legend-panel');
+  panel.dataset.open = panel.dataset.open === 'true' ? 'false' : 'true';
+});
+
+document.getElementById('search').addEventListener('input', (e) => {
+  searchTerm = e.target.value;
+  renderGrid();
+});
+
+// Register service worker for installability
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
