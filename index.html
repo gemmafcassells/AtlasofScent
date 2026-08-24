@@ -631,7 +631,7 @@
     <h2 class="add-heading">Add a fragrance</h2>
     <form id="add-form">
       <div class="form-section-heading" style="margin-top:0;padding-top:0;border-top:none;">Fetch from Parfumo</div>
-      <p class="fetch-hint">Paste the fragrance's Parfumo page URL and this pulls in the perfumer, category, top/heart/base notes, and bottle photo automatically — no copy-pasting needed. Family is filled in as a best guess from Parfumo's accords, so give it a check.</p>
+      <p class="fetch-hint">Paste the fragrance's Parfumo page URL and this pulls in the brand, name, perfumer, category, top/heart/base notes, and bottle photo automatically — no typing needed. Family and category are best guesses from Parfumo's accords, and brand/name are copied as Parfumo has them listed, so give those a check.</p>
       <div class="fetch-row">
         <input type="text" id="af-parfumo-fetch-url" placeholder="https://www.parfumo.com/Perfumes/...">
         <button type="button" class="btn-secondary" id="af-fetch-parfumo-btn">Fetch details</button>
@@ -1553,6 +1553,17 @@ document.getElementById('af-fetch-parfumo-btn').addEventListener('click', async 
     }
 
     const filled = [];
+    let namesGuessed = false;
+
+    if (data.brand_guess) {
+      const brandField = document.getElementById('af-brand');
+      if (!brandField.value.trim()) { brandField.value = data.brand_guess; filled.push('brand'); namesGuessed = true; }
+    }
+
+    if (data.name_guess) {
+      const nameField = document.getElementById('af-name');
+      if (!nameField.value.trim()) { nameField.value = data.name_guess; filled.push('name'); namesGuessed = true; }
+    }
 
     if (data.perfumer) {
       const perfumerField = document.getElementById('af-perfumer');
@@ -1596,6 +1607,7 @@ document.getElementById('af-fetch-parfumo-btn').addEventListener('click', async 
 
     const notes = [];
     if (filled.length) notes.push(`Filled in ${filled.join(', ')}.`);
+    if (namesGuessed) notes.push(`Brand/name are copied from Parfumo's own listing, which isn't always capitalised correctly — give them a check.`);
     if (familyGuessed) notes.push(`Family is a guess from Parfumo's main accords — double-check it.`);
     if (data.flat_notes) notes.push(`Parfumo lists: ${data.flat_notes} — no top/heart/base breakdown given, add manually if you'd like.`);
     if (data.photo_error) notes.push(data.photo_error);
