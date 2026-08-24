@@ -579,7 +579,7 @@
     <h2 class="add-heading">Add a fragrance</h2>
     <form id="add-form">
       <div class="form-section-heading" style="margin-top:0;padding-top:0;border-top:none;">Fetch from Parfumo</div>
-      <p class="fetch-hint">Paste the fragrance's Parfumo page URL and this pulls in the perfumer, top/heart/base notes, and bottle photo automatically — no copy-pasting needed.</p>
+      <p class="fetch-hint">Paste the fragrance's Parfumo page URL and this pulls in the perfumer, category, top/heart/base notes, and bottle photo automatically — no copy-pasting needed. Family is filled in as a best guess from Parfumo's accords, so give it a check.</p>
       <div class="fetch-row">
         <input type="text" id="af-parfumo-fetch-url" placeholder="https://www.parfumo.com/Perfumes/...">
         <button type="button" class="btn-secondary" id="af-fetch-parfumo-btn">Fetch details</button>
@@ -1256,6 +1256,17 @@ document.getElementById('af-fetch-parfumo-btn').addEventListener('click', async 
       if (!perfumerField.value.trim()) { perfumerField.value = data.perfumer; filled.push('perfumer'); }
     }
 
+    if (data.category_guess) {
+      const categoryField = document.getElementById('af-category');
+      if (!categoryField.value.trim()) { categoryField.value = data.category_guess; filled.push('category'); }
+    }
+
+    let familyGuessed = false;
+    if (data.family_guess) {
+      const familyField = document.getElementById('af-family');
+      if (!familyField.value) { familyField.value = data.family_guess; filled.push('family'); familyGuessed = true; }
+    }
+
     if (data.top_notes || data.heart_notes || data.base_notes) {
       const topF = document.getElementById('af-top-notes');
       const heartF = document.getElementById('af-heart-notes');
@@ -1282,6 +1293,7 @@ document.getElementById('af-fetch-parfumo-btn').addEventListener('click', async 
 
     const notes = [];
     if (filled.length) notes.push(`Filled in ${filled.join(', ')}.`);
+    if (familyGuessed) notes.push(`Family is a guess from Parfumo's main accords — double-check it.`);
     if (data.flat_notes) notes.push(`Parfumo lists: ${data.flat_notes} — no top/heart/base breakdown given, add manually if you'd like.`);
     if (data.photo_error) notes.push(data.photo_error);
 
