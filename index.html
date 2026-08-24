@@ -446,6 +446,58 @@
   .fetch-status.error { color: #a33323; }
   .fetch-status.success { color: #4a6b3f; }
 
+  .detail-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
+  .btn-secondary.danger { color: #a33323; border-color: rgba(163,51,35,0.3); }
+  .btn-secondary.danger:hover { background: rgba(163,51,35,0.08); }
+  .btn-primary.danger { background: #a33323; }
+  .confirm-text { font-family: 'Inter', sans-serif; font-size: 0.78rem; color: var(--ink-soft); }
+  .confirm-text.error { color: #a33323; }
+
+  .merge-search-input {
+    width: 100%; font-family: 'Newsreader', serif; font-size: 0.95rem;
+    padding: 0.5rem 0.6rem; border-radius: 8px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.55); color: var(--ink); margin-bottom: 0.8rem;
+  }
+  .merge-search-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .merge-pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto; }
+  .merge-pick-item {
+    display: flex; align-items: center; gap: 0.7rem;
+    border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem 0.7rem;
+    cursor: pointer; background: rgba(255,255,255,0.4);
+  }
+  .merge-pick-item:hover { background: rgba(255,255,255,0.7); }
+  .merge-pick-thumb { width: 38px; height: 50px; flex-shrink: 0; border-radius: 5px; overflow: hidden; background: var(--paper-2); }
+  .merge-pick-thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .merge-pick-text { flex: 1; min-width: 0; }
+  .merge-pick-brand { font-family: 'Inter', sans-serif; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+  .merge-pick-name { font-family: 'Fraunces', serif; font-size: 0.98rem; }
+  .merge-pick-flag {
+    font-family: 'Inter', sans-serif; font-size: 0.66rem; font-weight: 600;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 999px;
+    padding: 0.15rem 0.5rem; white-space: nowrap;
+  }
+  .merge-empty-list { font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--ink-faint); list-style: none; }
+
+  .merge-compare { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 1rem; }
+  .merge-row { border-top: 1px solid var(--line); padding-top: 0.7rem; }
+  .merge-row-label {
+    font-family: 'Inter', sans-serif; font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.4rem;
+  }
+  .merge-row-shared { font-size: 0.92rem; line-height: 1.5; }
+  .merge-row-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .merge-option {
+    display: block; border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.5rem 0.6rem; cursor: pointer; background: rgba(255,255,255,0.4);
+    font-size: 0.9rem; line-height: 1.45;
+  }
+  .merge-option:has(input:checked) { border-color: var(--accent); background: rgba(122,47,42,0.07); }
+  .merge-option input { margin-right: 0.4rem; accent-color: var(--accent); }
+  .merge-row-photo.merge-row-options { grid-template-columns: 1fr 1fr; }
+  .merge-option-photo img { max-width: 100%; max-height: 140px; object-fit: contain; display: block; margin-top: 0.35rem; }
+  .merge-row-photo.merge-row-shared img { max-height: 140px; object-fit: contain; }
+  .merge-empty { color: var(--ink-faint); font-style: italic; }
+
   .form-section-heading {
     font-family: 'Inter', sans-serif;
     font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase;
@@ -733,6 +785,18 @@ populateFamilySelect();
 
 function slugify(s) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '');
+}
+
+// Curly/smart quotes creep in from spreadsheet imports, Word, iOS autocorrect,
+// etc. Left alone, "Penhaligon's" typed fresh (straight ') and "Penhaligon's"
+// pasted from a spreadsheet (curly ') read as two different brands. Normalize
+// on the way in so brand/name always end up in one consistent form.
+function normalizeText(s) {
+  return s
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 let fragrances = [];
@@ -1039,6 +1103,11 @@ function openDetail(frag) {
       </div>
     </div>
 
+    <div class="detail-actions">
+      <button class="btn-secondary" id="merge-btn" type="button">Merge duplicate…</button>
+      <button class="btn-secondary danger" id="delete-btn" type="button">Delete</button>
+    </div>
+
     ${hasNotes ? `
     <div class="section">
       <h3>Notes</h3>
@@ -1093,7 +1162,241 @@ function openDetail(frag) {
     setTimeout(() => { status.textContent = ''; }, 1500);
   };
 
+  document.getElementById('merge-btn').onclick = () => openMergePicker(frag);
+  document.getElementById('delete-btn').onclick = () => {
+    const actions = document.querySelector('.detail-actions');
+    actions.innerHTML = `
+      <span class="confirm-text">Delete this entry? This can't be undone.</span>
+      <button class="btn-primary danger" id="confirm-delete-btn" type="button">Yes, delete</button>
+      <button class="btn-secondary" id="cancel-delete-btn" type="button">Cancel</button>
+    `;
+    document.getElementById('cancel-delete-btn').onclick = () => openDetail(frag);
+    document.getElementById('confirm-delete-btn').onclick = () => deleteFragrance(frag);
+  };
+
   document.getElementById('overlay').hidden = false;
+}
+
+async function deleteFragrance(frag) {
+  const actions = document.querySelector('.detail-actions');
+  if (actions) actions.innerHTML = '<span class="confirm-text">deleting…</span>';
+
+  const { error } = await supabase.from('fragrances').delete().eq('id', frag.id);
+  if (error) {
+    if (actions) actions.innerHTML = `<span class="confirm-text error">Could not delete: ${escapeHtml(error.message)}</span>`;
+    return;
+  }
+
+  if (frag.photo_path && !fragrances.some((f) => f.id !== frag.id && f.photo_path === frag.photo_path)) {
+    await supabase.storage.from(BUCKET).remove([frag.photo_path]);
+  }
+
+  closeDetail();
+  await loadData();
+}
+
+// --- Merge duplicates ---
+
+// Every field worth reconciling when two entries turn out to be the same
+// fragrance. `display` formats a raw value for the comparison view;
+// `isPhoto` swaps the text row for a thumbnail-vs-thumbnail picker.
+const MERGE_FIELDS = [
+  { key: 'brand', label: 'Brand' },
+  { key: 'name', label: 'Name' },
+  { key: 'family', label: 'Family', display: (v) => v ? (FAMILY_LABELS[v] || v) : '' },
+  { key: 'category', label: 'Category' },
+  { key: 'perfumer', label: 'Perfumer' },
+  { key: 'top_notes', label: 'Top notes' },
+  { key: 'heart_notes', label: 'Heart notes' },
+  { key: 'base_notes', label: 'Base notes' },
+  { key: 'notes_source', label: 'Notes source', display: (v) => v === 'parfumo' ? 'Parfumo' : v === 'fragrantica' ? 'Fragrantica' : v === 'own' ? 'Your own impression' : '' },
+  { key: 'rating', label: 'Rating', display: (v) => v ? stars(v) : '' },
+  { key: 'summary', label: 'Your summary' },
+  { key: 'where_place', label: 'Where does this take me?' },
+  { key: 'weather', label: 'What’s the weather?' },
+  { key: 'who_lives_here', label: 'Who lives here?' },
+  { key: 'who_am_i', label: 'Who am I when I wear it?' },
+  { key: 'draws_out', label: 'What does it draw out of me?' },
+  { key: 'inhabit', label: 'Would spend a day here?', display: (v) => v === 'visit' ? 'Visit' : v === 'live' ? 'Live' : '' },
+  { key: 'photo_path', label: 'Photo', isPhoto: true },
+  { key: 'source_url', label: 'Brand page link' },
+  { key: 'fragrantica_url', label: 'Parfumo link' },
+  { key: 'rrp', label: 'RRP' },
+  { key: 'avg_price', label: 'Avg price seen' },
+  { key: 'discount_note', label: 'Discount note' },
+];
+
+function fieldValsEqual(a, b) {
+  const na = (a === null || a === undefined) ? '' : String(a).trim();
+  const nb = (b === null || b === undefined) ? '' : String(b).trim();
+  return na === nb;
+}
+
+function mergeSortKey(f) {
+  return normalizeText(`${f.brand} ${f.name}`).toLowerCase();
+}
+
+function openMergePicker(fragA) {
+  const detail = document.getElementById('detail');
+  const myKey = mergeSortKey(fragA);
+  const candidates = fragrances
+    .filter((f) => f.id !== fragA.id)
+    .map((f) => ({ f, likely: mergeSortKey(f) === myKey }))
+    .sort((a, b) => (b.likely - a.likely) || `${a.f.brand} ${a.f.name}`.localeCompare(`${b.f.brand} ${b.f.name}`));
+
+  const renderList = (term) => {
+    const t = term.trim().toLowerCase();
+    const items = candidates.filter(({ f }) => !t || `${f.brand} ${f.name}`.toLowerCase().includes(t));
+    if (!items.length) return '<li class="merge-empty-list">No other entries match.</li>';
+    return items.map(({ f, likely }) => `
+      <li class="merge-pick-item" data-id="${f.id}">
+        <div class="merge-pick-thumb">${f.photo_path ? `<img src="${photoUrl(f.photo_path)}" alt="">` : ''}</div>
+        <div class="merge-pick-text">
+          <div class="merge-pick-brand">${escapeHtml(f.brand)}</div>
+          <div class="merge-pick-name">${escapeHtml(f.name)}</div>
+        </div>
+        ${likely ? '<span class="merge-pick-flag">same name</span>' : ''}
+      </li>
+    `).join('');
+  };
+
+  detail.innerHTML = `
+    <button class="close-btn" id="close-detail" aria-label="Close">&times;</button>
+    <div class="add-heading">Merge duplicate</div>
+    <p class="fetch-hint">Find the other entry for <strong>${escapeHtml(fragA.brand)} — ${escapeHtml(fragA.name)}</strong>. You'll choose which details to keep from each on the next step.</p>
+    <input type="text" id="merge-search" placeholder="Search brand or name…" class="merge-search-input">
+    <ul class="merge-pick-list" id="merge-pick-list">${renderList('')}</ul>
+    <div class="form-actions"><button class="btn-secondary" id="merge-cancel-btn" type="button">Cancel</button></div>
+  `;
+
+  document.getElementById('close-detail').onclick = closeDetail;
+  document.getElementById('merge-cancel-btn').onclick = () => openDetail(fragA);
+
+  const wireList = () => {
+    detail.querySelectorAll('.merge-pick-item[data-id]').forEach((li) => {
+      li.onclick = () => {
+        const fragB = fragrances.find((f) => f.id === li.dataset.id);
+        if (fragB) openMergeCompare(fragA, fragB);
+      };
+    });
+  };
+  wireList();
+
+  const searchInput = document.getElementById('merge-search');
+  searchInput.oninput = () => {
+    document.getElementById('merge-pick-list').innerHTML = renderList(searchInput.value);
+    wireList();
+  };
+}
+
+function openMergeCompare(fragA, fragB) {
+  const detail = document.getElementById('detail');
+
+  const showVal = (v, { display, isPhoto } = {}) => {
+    if (isPhoto) return v ? `<img src="${photoUrl(v)}" alt="">` : '<span class="merge-empty">no photo</span>';
+    const shown = display ? display(v) : v;
+    return shown ? escapeHtml(String(shown)) : '<span class="merge-empty">empty</span>';
+  };
+
+  const rows = MERGE_FIELDS.map((field) => {
+    const { key, label, isPhoto } = field;
+    const valA = fragA[key];
+    const valB = fragB[key];
+
+    if (fieldValsEqual(valA, valB)) {
+      return `
+        <div class="merge-row">
+          <div class="merge-row-label">${label}</div>
+          <div class="merge-row-shared ${isPhoto ? 'merge-row-photo' : ''}">${showVal(valA, field)}</div>
+        </div>
+      `;
+    }
+
+    const aEmpty = valA === null || valA === undefined || valA === '';
+    const bEmpty = valB === null || valB === undefined || valB === '';
+    const defaultSide = aEmpty && !bEmpty ? 'b' : 'a';
+
+    return `
+      <div class="merge-row merge-row-diff">
+        <div class="merge-row-label">${label}</div>
+        <div class="merge-row-options ${isPhoto ? 'merge-row-photo' : ''}">
+          <label class="merge-option ${isPhoto ? 'merge-option-photo' : ''}">
+            <input type="radio" name="mf-${key}" value="a" ${defaultSide === 'a' ? 'checked' : ''}>
+            <span>${showVal(valA, field)}</span>
+          </label>
+          <label class="merge-option ${isPhoto ? 'merge-option-photo' : ''}">
+            <input type="radio" name="mf-${key}" value="b" ${defaultSide === 'b' ? 'checked' : ''}>
+            <span>${showVal(valB, field)}</span>
+          </label>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  detail.innerHTML = `
+    <button class="close-btn" id="close-detail" aria-label="Close">&times;</button>
+    <div class="add-heading">Merge duplicate</div>
+    <p class="fetch-hint">Fields that already match are shown once. Where they differ, pick which to keep — the result replaces <strong>${escapeHtml(fragA.brand)} — ${escapeHtml(fragA.name)}</strong>, and the other entry is deleted.</p>
+    <div class="merge-compare">${rows}</div>
+    <div class="form-actions">
+      <button class="btn-primary" id="merge-confirm-btn" type="button">Merge these two</button>
+      <button class="btn-secondary" id="merge-back-btn" type="button">Back</button>
+      <span class="fetch-status" id="merge-status"></span>
+    </div>
+  `;
+
+  document.getElementById('close-detail').onclick = closeDetail;
+  document.getElementById('merge-back-btn').onclick = () => openMergePicker(fragA);
+  document.getElementById('merge-confirm-btn').onclick = () => performMerge(fragA, fragB);
+}
+
+async function performMerge(fragA, fragB) {
+  const btn = document.getElementById('merge-confirm-btn');
+  const status = document.getElementById('merge-status');
+  btn.disabled = true;
+  status.className = 'fetch-status';
+  status.textContent = 'merging…';
+
+  const update = {};
+  MERGE_FIELDS.forEach(({ key }) => {
+    const valA = fragA[key];
+    const valB = fragB[key];
+    if (fieldValsEqual(valA, valB)) { update[key] = valA; return; }
+    const checked = document.querySelector(`input[name="mf-${key}"]:checked`);
+    update[key] = (checked && checked.value === 'b') ? valB : valA;
+  });
+
+  const { error: updErr } = await supabase.from('fragrances').update(update).eq('id', fragA.id);
+  if (updErr) {
+    status.textContent = 'Could not save merge: ' + updErr.message;
+    status.classList.add('error');
+    btn.disabled = false;
+    return;
+  }
+
+  const { error: delErr } = await supabase.from('fragrances').delete().eq('id', fragB.id);
+  if (delErr) {
+    status.textContent = 'Merged fields saved, but could not remove the duplicate entry: ' + delErr.message;
+    status.classList.add('error');
+    btn.disabled = false;
+    return;
+  }
+
+  const finalPhoto = update.photo_path;
+  const orphans = [fragA.photo_path, fragB.photo_path].filter((p) => p && p !== finalPhoto);
+  for (const p of orphans) {
+    if (!fragrances.some((f) => f.id !== fragA.id && f.id !== fragB.id && f.photo_path === p)) {
+      await supabase.storage.from(BUCKET).remove([p]);
+    }
+  }
+
+  status.textContent = 'merged!';
+  status.classList.add('success');
+  await loadData();
+  setTimeout(() => {
+    const merged = fragrances.find((f) => f.id === fragA.id);
+    if (merged) openDetail(merged); else closeDetail();
+  }, 500);
 }
 
 function startEdit(section, frag) {
@@ -1338,8 +1641,8 @@ addForm.addEventListener('submit', async (e) => {
     return Number.isFinite(n) ? n : null;
   };
 
-  const brand = val('af-brand');
-  const name = val('af-name');
+  const brand = normalizeText(val('af-brand'));
+  const name = normalizeText(val('af-name'));
   const family = document.getElementById('af-family').value;
   const category = val('af-category');
   const perfumer = val('af-perfumer');
