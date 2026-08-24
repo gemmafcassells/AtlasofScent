@@ -578,22 +578,13 @@
     <button class="close-btn" id="close-add" aria-label="Close">&times;</button>
     <h2 class="add-heading">Add a fragrance</h2>
     <form id="add-form">
-      <div class="form-section-heading" style="margin-top:0;padding-top:0;border-top:none;">Fetch from Fragrantica</div>
-      <p class="fetch-hint">Paste the fragrance's Fragrantica page URL to pull in the bottle photo automatically. Fragrantica blocks automated requests to the page text itself, so for perfumer and notes, copy the description paragraph from the page (the one starting "X by Y is a...") and paste it below to fill those in too.</p>
+      <div class="form-section-heading" style="margin-top:0;padding-top:0;border-top:none;">Fetch from Parfumo</div>
+      <p class="fetch-hint">Paste the fragrance's Parfumo page URL and this pulls in the perfumer, top/heart/base notes, and bottle photo automatically — no copy-pasting needed.</p>
       <div class="fetch-row">
-        <input type="text" id="af-fragrantica-fetch-url" placeholder="https://www.fragrantica.com/perfume/...">
-        <button type="button" class="btn-secondary" id="af-fetch-photo-btn">Fetch photo</button>
+        <input type="text" id="af-parfumo-fetch-url" placeholder="https://www.parfumo.com/Perfumes/...">
+        <button type="button" class="btn-secondary" id="af-fetch-parfumo-btn">Fetch details</button>
       </div>
-      <div class="fetch-status" id="af-fetch-photo-status"></div>
-
-      <div class="form-field" style="margin-top:0.8rem;">
-        <label for="af-fetch-notes-paste">Paste description paragraph</label>
-        <textarea class="small" id="af-fetch-notes-paste" placeholder="e.g. Black Cedarwood &amp; Juniper by Jo Malone London is a Woody Spicy fragrance… The nose behind this fragrance is Christine Nagel. Top notes are Cumin and Chili Pepper; middle note is Juniper; base note is Cedar."></textarea>
-      </div>
-      <div class="fetch-row">
-        <button type="button" class="btn-secondary" id="af-parse-notes-btn">Parse notes</button>
-      </div>
-      <div class="fetch-status" id="af-parse-notes-status"></div>
+      <div class="fetch-status" id="af-fetch-parfumo-status"></div>
 
       <div class="form-section-heading">Basics</div>
       <div class="form-row">
@@ -640,7 +631,7 @@
           <label for="af-notes-source">Notes source</label>
           <select id="af-notes-source">
             <option value="">Not specified</option>
-            <option value="fragrantica">Fragrantica</option>
+            <option value="parfumo">Parfumo</option>
             <option value="own">Your own impression</option>
           </select>
         </div>
@@ -673,7 +664,7 @@
       <div class="form-field"><label for="af-discount-note">Discount note</label><input type="text" id="af-discount-note" placeholder="e.g. often 20% off at TFS"></div>
       <div class="form-row">
         <div class="form-field"><label for="af-source-url">Brand page link</label><input type="text" id="af-source-url" placeholder="https://…"></div>
-        <div class="form-field"><label for="af-fragrantica-url">Fragrantica link</label><input type="text" id="af-fragrantica-url" placeholder="https://…"></div>
+        <div class="form-field"><label for="af-parfumo-url">Parfumo link</label><input type="text" id="af-parfumo-url" placeholder="https://…"></div>
       </div>
 
       <div class="form-actions">
@@ -1028,7 +1019,7 @@ function fieldBlock(label, key, frag, placeholder) {
 
 function openDetail(frag) {
   const detail = document.getElementById('detail');
-  const notesSource = frag.notes_source === 'fragrantica' ? 'Notes via Fragrantica' : (frag.notes_source === 'own' ? 'Notes from your own impression' : '');
+  const notesSource = frag.notes_source === 'parfumo' ? 'Notes via Parfumo' : (frag.notes_source === 'fragrantica' ? 'Notes via Fragrantica' : (frag.notes_source === 'own' ? 'Notes from your own impression' : ''));
   const hasNotes = frag.top_notes || frag.heart_notes || frag.base_notes;
 
   const buyingParts = [];
@@ -1081,7 +1072,7 @@ function openDetail(frag) {
 
     <div class="links-row">
       ${frag.source_url ? `<a href="${frag.source_url}" target="_blank" rel="noopener">Brand page ↗</a>` : ''}
-      ${frag.fragrantica_url ? `<a href="${frag.fragrantica_url}" target="_blank" rel="noopener">Fragrantica ↗</a>` : ''}
+      ${frag.fragrantica_url ? `<a href="${frag.fragrantica_url}" target="_blank" rel="noopener">${/parfumo\.com/i.test(frag.fragrantica_url) ? 'Parfumo ↗' : /fragrantica\.com/i.test(frag.fragrantica_url) ? 'Fragrantica ↗' : 'Source ↗'}</a>` : ''}
     </div>
   `;
 
@@ -1211,7 +1202,7 @@ document.getElementById('group-toggle').addEventListener('change', (e) => {
 // Add-fragrance form
 const addOverlay = document.getElementById('add-overlay');
 const addForm = document.getElementById('add-form');
-const FRAGRANTICA_FN_URL = 'https://ptffodgnvegflqtvmoaj.supabase.co/functions/v1/fragrantica-fetch';
+const PARFUMO_FN_URL = 'https://ptffodgnvegflqtvmoaj.supabase.co/functions/v1/parfumo-fetch';
 let fetchedPhotoPath = null;
 
 document.getElementById('add-fragrance-btn').addEventListener('click', () => {
@@ -1219,32 +1210,30 @@ document.getElementById('add-fragrance-btn').addEventListener('click', () => {
   document.getElementById('af-photo-preview').innerHTML = '';
   document.getElementById('af-error').hidden = true;
   document.getElementById('af-status').textContent = '';
-  document.getElementById('af-fetch-photo-status').className = 'fetch-status';
-  document.getElementById('af-fetch-photo-status').textContent = '';
-  document.getElementById('af-parse-notes-status').className = 'fetch-status';
-  document.getElementById('af-parse-notes-status').textContent = '';
+  document.getElementById('af-fetch-parfumo-status').className = 'fetch-status';
+  document.getElementById('af-fetch-parfumo-status').textContent = '';
   fetchedPhotoPath = null;
   const details = addForm.querySelector('details.atlas-details');
   if (details) details.open = false;
   addOverlay.hidden = false;
 });
 
-document.getElementById('af-fetch-photo-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('af-fetch-photo-btn');
-  const statusEl = document.getElementById('af-fetch-photo-status');
-  const url = document.getElementById('af-fragrantica-fetch-url').value.trim();
+document.getElementById('af-fetch-parfumo-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('af-fetch-parfumo-btn');
+  const statusEl = document.getElementById('af-fetch-parfumo-status');
+  const url = document.getElementById('af-parfumo-fetch-url').value.trim();
   statusEl.className = 'fetch-status';
 
   if (!url) {
-    statusEl.textContent = 'Paste a Fragrantica URL first.';
+    statusEl.textContent = 'Paste a Parfumo URL first.';
     statusEl.classList.add('error');
     return;
   }
 
   btn.disabled = true;
-  statusEl.textContent = 'fetching photo…';
+  statusEl.textContent = 'fetching…';
   try {
-    const resp = await fetch(FRAGRANTICA_FN_URL, {
+    const resp = await fetch(PARFUMO_FN_URL, {
       method: 'POST',
       body: JSON.stringify({
         url,
@@ -1253,70 +1242,61 @@ document.getElementById('af-fetch-photo-btn').addEventListener('click', async ()
       }),
     });
     const data = await resp.json();
-    if (!resp.ok || !data.photo_path) {
-      statusEl.textContent = data.error || data.photo_error || 'Could not fetch a photo for that page.';
+    if (!resp.ok) {
+      statusEl.textContent = data.error || 'Could not fetch details for that page.';
       statusEl.classList.add('error');
-    } else {
+      btn.disabled = false;
+      return;
+    }
+
+    const filled = [];
+
+    if (data.perfumer) {
+      const perfumerField = document.getElementById('af-perfumer');
+      if (!perfumerField.value.trim()) { perfumerField.value = data.perfumer; filled.push('perfumer'); }
+    }
+
+    if (data.top_notes || data.heart_notes || data.base_notes) {
+      const topF = document.getElementById('af-top-notes');
+      const heartF = document.getElementById('af-heart-notes');
+      const baseF = document.getElementById('af-base-notes');
+      if (data.top_notes && !topF.value.trim()) { topF.value = data.top_notes; filled.push('top notes'); }
+      if (data.heart_notes && !heartF.value.trim()) { heartF.value = data.heart_notes; filled.push('heart notes'); }
+      if (data.base_notes && !baseF.value.trim()) { baseF.value = data.base_notes; filled.push('base notes'); }
+      const srcF = document.getElementById('af-notes-source');
+      if (!srcF.value) srcF.value = 'parfumo';
+    } else if (data.flat_notes) {
+      const srcF = document.getElementById('af-notes-source');
+      if (!srcF.value) srcF.value = 'parfumo';
+    }
+
+    if (data.photo_path) {
       fetchedPhotoPath = data.photo_path;
       document.getElementById('af-photo-preview').innerHTML =
         `<img src="${photoUrl(fetchedPhotoPath)}" alt="fetched bottle photo">`;
-      const fragUrlField = document.getElementById('af-fragrantica-url');
-      if (!fragUrlField.value.trim()) fragUrlField.value = url;
-      statusEl.textContent = "Photo added below — choose a file instead if you'd rather use your own.";
-      statusEl.classList.add('success');
+      filled.push('photo');
+    }
+
+    const urlField = document.getElementById('af-parfumo-url');
+    if (!urlField.value.trim()) urlField.value = url;
+
+    const notes = [];
+    if (filled.length) notes.push(`Filled in ${filled.join(', ')}.`);
+    if (data.flat_notes) notes.push(`Parfumo lists: ${data.flat_notes} — no top/heart/base breakdown given, add manually if you'd like.`);
+    if (data.photo_error) notes.push(data.photo_error);
+
+    if (notes.length) {
+      statusEl.textContent = notes.join(' ');
+      statusEl.classList.add(filled.length ? 'success' : 'error');
+    } else {
+      statusEl.textContent = "Couldn't find perfumer, notes, or a photo on that page.";
+      statusEl.classList.add('error');
     }
   } catch (e) {
     statusEl.textContent = 'Something went wrong reaching the fetch service.';
     statusEl.classList.add('error');
   }
   btn.disabled = false;
-});
-
-document.getElementById('af-parse-notes-btn').addEventListener('click', () => {
-  const statusEl = document.getElementById('af-parse-notes-status');
-  const text = document.getElementById('af-fetch-notes-paste').value.trim();
-  statusEl.className = 'fetch-status';
-
-  if (!text) {
-    statusEl.textContent = 'Paste the description paragraph first.';
-    statusEl.classList.add('error');
-    return;
-  }
-
-  const noseMatch = text.match(/nose behind this fragrance (?:is|are) ([^.]+)\./i);
-  const structured = text.match(
-    /top notes? (?:is|are) (.+?);\s*(?:middle|heart) notes? (?:is|are) (.+?);\s*base notes? (?:is|are) (.+?)\./i,
-  );
-  const flat = !structured ? text.match(/fragrance features (.+?)\./i) : null;
-
-  const filled = [];
-  if (noseMatch) {
-    const perfumerField = document.getElementById('af-perfumer');
-    if (!perfumerField.value.trim()) {
-      perfumerField.value = noseMatch[1].trim();
-      filled.push('perfumer');
-    }
-  }
-  if (structured) {
-    const topF = document.getElementById('af-top-notes');
-    const heartF = document.getElementById('af-heart-notes');
-    const baseF = document.getElementById('af-base-notes');
-    if (!topF.value.trim()) { topF.value = structured[1].trim(); filled.push('top notes'); }
-    if (!heartF.value.trim()) { heartF.value = structured[2].trim(); filled.push('heart notes'); }
-    if (!baseF.value.trim()) { baseF.value = structured[3].trim(); filled.push('base notes'); }
-    const srcF = document.getElementById('af-notes-source');
-    if (!srcF.value) srcF.value = 'fragrantica';
-  }
-
-  if (filled.length) {
-    statusEl.textContent = `Filled in ${filled.join(', ')}.`;
-    statusEl.classList.add('success');
-  } else if (flat) {
-    statusEl.textContent = `Fragrantica lists: ${flat[1].trim()} — no top/heart/base breakdown given, add manually if you'd like.`;
-  } else {
-    statusEl.textContent = "Couldn't find a recognizable pattern in that text — try pasting the full paragraph, or fill notes in manually.";
-    statusEl.classList.add('error');
-  }
 });
 document.getElementById('close-add').addEventListener('click', () => { addOverlay.hidden = true; });
 addOverlay.addEventListener('click', (e) => { if (e.target.id === 'add-overlay') addOverlay.hidden = true; });
@@ -1371,7 +1351,7 @@ addForm.addEventListener('submit', async (e) => {
   const avgPrice = numOrNull(val('af-avg-price'));
   const discountNote = val('af-discount-note');
   const sourceUrl = val('af-source-url');
-  const fragranticaUrl = val('af-fragrantica-url');
+  const parfumoUrl = val('af-parfumo-url');
 
   if (!brand || !name || !family) {
     errorEl.textContent = 'Brand, name, and family are required.';
@@ -1427,7 +1407,7 @@ addForm.addEventListener('submit', async (e) => {
     avg_price: avgPrice,
     discount_note: discountNote || null,
     source_url: sourceUrl || null,
-    fragrantica_url: fragranticaUrl || null,
+    fragrantica_url: parfumoUrl || null,
     sort_order: maxSort + 1,
   }).select();
 
