@@ -373,6 +373,61 @@
   }
   .legend-grid label { display: flex; align-items: center; gap: 0.5rem; color: var(--ink-soft); }
   .legend-grid input[type=color] { width: 22px; height: 22px; border: none; background: none; padding: 0; cursor: pointer; }
+
+  .add-heading {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem; font-weight: 600;
+    margin: 0 0 1.1rem;
+  }
+  .form-row { display: flex; gap: 0.9rem; }
+  .form-row .form-field { flex: 1; min-width: 0; }
+  .form-field { margin-bottom: 0.9rem; }
+  .form-field label {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.3rem;
+  }
+  .form-field input[type="text"],
+  .form-field select,
+  .form-field textarea {
+    width: 100%;
+    font-family: 'Newsreader', serif;
+    font-size: 0.95rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.55);
+    color: var(--ink);
+  }
+  .form-field input[type="text"]:focus,
+  .form-field select:focus,
+  .form-field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .form-field textarea { min-height: 5rem; resize: vertical; }
+  .photo-input-row { display: flex; align-items: center; gap: 0.8rem; }
+  .photo-input-row input[type="file"] { font-family: 'Inter', sans-serif; font-size: 0.78rem; color: var(--ink-soft); }
+  .photo-preview {
+    width: 62px; height: 82px; flex-shrink: 0;
+    border-radius: 6px; overflow: hidden;
+    background: var(--paper-2);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-preview img { width: 100%; height: 100%; object-fit: contain; }
+  .form-actions { display: flex; align-items: center; gap: 0.9rem; margin-top: 1.3rem; }
+  .btn-primary {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem; font-weight: 600;
+    padding: 0.6rem 1.3rem;
+    border-radius: 999px; border: none;
+    background: var(--accent); color: var(--paper);
+    cursor: pointer;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .form-error {
+    font-family: 'Inter', sans-serif; font-size: 0.78rem;
+    color: #a33323; margin-top: 0.8rem;
+  }
 </style>
 </head>
 <body>
@@ -386,6 +441,7 @@
   <button class="chip tab" data-tab="fragrances" data-active="true">Collection</button>
   <button class="chip tab" data-tab="wishlist">Wishlist</button>
   <button class="chip" id="legend-toggle">Colors ⚙︎</button>
+  <button class="chip" id="add-fragrance-btn">+ Add fragrance</button>
 </div>
 
 <div class="toolbar" id="family-filters"></div>
@@ -413,6 +469,52 @@
 
 <div class="overlay" id="overlay" hidden>
   <div class="detail" id="detail"></div>
+</div>
+
+<div class="overlay" id="add-overlay" hidden>
+  <div class="detail" id="add-form-wrap">
+    <button class="close-btn" id="close-add" aria-label="Close">&times;</button>
+    <h2 class="add-heading">Add a fragrance</h2>
+    <form id="add-form">
+      <div class="form-row">
+        <div class="form-field"><label for="af-brand">Brand</label><input type="text" id="af-brand" required></div>
+        <div class="form-field"><label for="af-name">Name</label><input type="text" id="af-name" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="af-family">Family</label>
+          <select id="af-family" required></select>
+        </div>
+        <div class="form-field"><label for="af-category">Category</label><input type="text" id="af-category" placeholder="e.g. Eau de Parfum"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="af-rating">Rating</label>
+          <select id="af-rating">
+            <option value="">Not rated</option>
+            <option value="1">★☆☆☆☆</option>
+            <option value="2">★★☆☆☆</option>
+            <option value="3">★★★☆☆</option>
+            <option value="4">★★★★☆</option>
+            <option value="5">★★★★★</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="af-photo">Bottle photo</label>
+          <div class="photo-input-row">
+            <div class="photo-preview" id="af-photo-preview"></div>
+            <input type="file" id="af-photo" accept="image/*">
+          </div>
+        </div>
+      </div>
+      <div class="form-field"><label for="af-summary">Your review / summary</label><textarea id="af-summary" placeholder="What you think of it…"></textarea></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="af-submit">Add fragrance</button>
+        <span class="save-status" id="af-status"></span>
+      </div>
+      <div class="form-error" id="af-error" hidden></div>
+    </form>
+  </div>
 </div>
 
 <script type="module">
@@ -458,6 +560,17 @@ function saveColor(key, val) {
 }
 
 loadColors();
+
+function populateFamilySelect() {
+  const sel = document.getElementById('af-family');
+  sel.innerHTML = '<option value="" disabled selected>Choose a family…</option>' +
+    FAMILY_KEYS.map((k) => `<option value="${k}">${FAMILY_LABELS[k]}</option>`).join('');
+}
+populateFamilySelect();
+
+function slugify(s) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '');
+}
 
 let fragrances = [];
 let wishlist = [];
@@ -750,6 +863,103 @@ document.getElementById('legend-toggle').addEventListener('click', () => {
 document.getElementById('search').addEventListener('input', (e) => {
   searchTerm = e.target.value;
   renderGrid();
+});
+
+// Add-fragrance form
+const addOverlay = document.getElementById('add-overlay');
+const addForm = document.getElementById('add-form');
+
+document.getElementById('add-fragrance-btn').addEventListener('click', () => {
+  addForm.reset();
+  document.getElementById('af-photo-preview').innerHTML = '';
+  document.getElementById('af-error').hidden = true;
+  document.getElementById('af-status').textContent = '';
+  addOverlay.hidden = false;
+});
+document.getElementById('close-add').addEventListener('click', () => { addOverlay.hidden = true; });
+addOverlay.addEventListener('click', (e) => { if (e.target.id === 'add-overlay') addOverlay.hidden = true; });
+
+document.getElementById('af-photo').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  const preview = document.getElementById('af-photo-preview');
+  preview.innerHTML = '';
+  if (file) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  }
+});
+
+addForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('af-error');
+  const statusEl = document.getElementById('af-status');
+  const submitBtn = document.getElementById('af-submit');
+  errorEl.hidden = true;
+
+  const brand = document.getElementById('af-brand').value.trim();
+  const name = document.getElementById('af-name').value.trim();
+  const family = document.getElementById('af-family').value;
+  const category = document.getElementById('af-category').value.trim();
+  const ratingVal = document.getElementById('af-rating').value;
+  const summary = document.getElementById('af-summary').value.trim();
+  const photoFile = document.getElementById('af-photo').files[0];
+
+  if (!brand || !name || !family) {
+    errorEl.textContent = 'Brand, name, and family are required.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = 'saving…';
+
+  let photo_path = null;
+  if (photoFile) {
+    const ext = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const base = slugify(`${brand}-${name}`) || 'fragrance';
+    let path = `${base}.${ext}`;
+    let { error: upErr } = await supabase.storage.from(BUCKET).upload(path, photoFile, { upsert: false });
+    if (upErr) {
+      // likely a filename collision with an existing photo — retry with a unique suffix
+      path = `${base}-${Date.now()}.${ext}`;
+      const retry = await supabase.storage.from(BUCKET).upload(path, photoFile, { upsert: false });
+      upErr = retry.error;
+    }
+    if (upErr) {
+      errorEl.textContent = 'Photo upload failed: ' + upErr.message;
+      errorEl.hidden = false;
+      submitBtn.disabled = false;
+      statusEl.textContent = '';
+      return;
+    }
+    photo_path = path;
+  }
+
+  const maxSort = fragrances.reduce((m, f) => Math.max(m, f.sort_order || 0), 0);
+
+  const { data: insertedRows, error: insErr } = await supabase.from('fragrances').insert({
+    brand, name, family,
+    category: category || null,
+    rating: ratingVal ? Number(ratingVal) : null,
+    summary: summary || null,
+    photo_path,
+    sort_order: maxSort + 1,
+  }).select();
+
+  submitBtn.disabled = false;
+
+  if (insErr || !insertedRows || !insertedRows[0]) {
+    errorEl.textContent = 'Could not save: ' + (insErr ? insErr.message : 'unknown error');
+    errorEl.hidden = false;
+    statusEl.textContent = '';
+    return;
+  }
+
+  statusEl.textContent = 'added!';
+  fragrances.push(insertedRows[0]);
+  renderGrid();
+  setTimeout(() => { addOverlay.hidden = true; }, 500);
 });
 
 // Register service worker for installability
