@@ -428,30 +428,98 @@
     font-family: 'Inter', sans-serif; font-size: 0.78rem;
     color: #a33323; margin-top: 0.8rem;
   }
+
+  .form-section-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 1.3rem 0 0.6rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+  .form-section-heading:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+  .form-field textarea.small { min-height: 2.6rem; }
+  details.atlas-details { margin-top: 0.3rem; }
+  details.atlas-details summary {
+    cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 0.78rem; color: var(--ink-soft);
+    padding: 0.3rem 0 0.7rem; list-style: none;
+  }
+  details.atlas-details summary::-webkit-details-marker { display: none; }
+  details.atlas-details summary::before { content: '▸ '; }
+  details.atlas-details[open] summary::before { content: '▾ '; }
+
+  /* Sort / group controls */
+  .search-row { gap: 0.6rem; flex-wrap: wrap; }
+  .search-row select {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.5);
+    color: var(--ink-soft);
+  }
+  .group-toggle {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--ink-soft);
+    padding: 0.5rem 0.3rem;
+    user-select: none; cursor: pointer;
+  }
+  .group-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 0.7rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .group-block + .group-block { margin-top: 1.9rem; }
+
+  /* Fragrance wheel */
+  .wheel-layout { display: flex; gap: 1.8rem; flex-wrap: wrap; align-items: flex-start; }
+  .wheel-chart-wrap { position: relative; flex: 1 1 480px; max-width: 640px; }
+  .wheel-chart-wrap svg { width: 100%; height: auto; display: block; }
+  .wheel-side { flex: 0 0 220px; display: flex; flex-direction: column; gap: 0.9rem; }
+  .wheel-caption { font-family: 'Inter', sans-serif; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.55; margin: 0; }
+  .wheel-wedge-label { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+  .wheel-dot { cursor: pointer; transition: r 0.12s ease; }
+  .wheel-dot:hover, .wheel-dot:focus { outline: none; r: 9; }
+  .wheel-tooltip {
+    position: absolute; transform: translate(-50%, -135%);
+    background: var(--ink); color: var(--paper);
+    font-family: 'Inter', sans-serif; font-size: 0.72rem; line-height: 1.45;
+    padding: 0.4rem 0.65rem; border-radius: 8px; pointer-events: none;
+    white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.25); z-index: 5;
+  }
 </style>
 </head>
 <body>
 
 <header>
   <h1>Atlas of Scent</h1>
-  <p class="tagline">a private map of where each scent takes you</p>
+  <p class="tagline">A private map of scent</p>
 </header>
 
 <div class="toolbar" id="tabs">
   <button class="chip tab" data-tab="fragrances" data-active="true">Collection</button>
   <button class="chip tab" data-tab="wishlist">Wishlist</button>
-  <button class="chip" id="legend-toggle">Colors ⚙︎</button>
+  <button class="chip tab" data-tab="wheel">Wheel</button>
   <button class="chip" id="add-fragrance-btn">+ Add fragrance</button>
 </div>
 
 <div class="toolbar" id="family-filters"></div>
 
-<div class="search-row">
+<div class="search-row" id="search-row">
   <input type="text" id="search" placeholder="Search brand or name…">
-</div>
-
-<div class="legend-panel" id="legend-panel">
-  <div class="legend-grid" id="legend-grid"></div>
+  <select id="sort-select" aria-label="Sort by">
+    <option value="sort_order">Custom order</option>
+    <option value="brand">Brand</option>
+    <option value="name">Name</option>
+    <option value="perfumer">Perfumer</option>
+    <option value="created_at">Date added</option>
+  </select>
+  <label class="group-toggle"><input type="checkbox" id="group-toggle"> Group</label>
 </div>
 
 <main>
@@ -462,6 +530,22 @@
 
   <section id="view-wishlist" hidden>
     <ul class="wishlist-list" id="wishlist-list"></ul>
+  </section>
+
+  <section id="view-wheel" hidden>
+    <div class="wheel-layout">
+      <div class="wheel-chart-wrap" id="wheel-chart-wrap">
+        <svg id="wheel-svg" viewBox="0 0 640 640" role="img" aria-label="Fragrances plotted by family and rating"></svg>
+        <div class="wheel-tooltip" id="wheel-tooltip" hidden></div>
+      </div>
+      <div class="wheel-side">
+        <p class="wheel-caption">Angle places each fragrance in its family; distance from the center tracks rating, so favorites sit near the rim and the center holds anything not yet rated.</p>
+        <button class="chip" id="wheel-legend-toggle">Customize colors ⚙︎</button>
+        <div class="legend-panel" id="legend-panel">
+          <div class="legend-grid" id="legend-grid"></div>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -476,6 +560,7 @@
     <button class="close-btn" id="close-add" aria-label="Close">&times;</button>
     <h2 class="add-heading">Add a fragrance</h2>
     <form id="add-form">
+      <div class="form-section-heading">Basics</div>
       <div class="form-row">
         <div class="form-field"><label for="af-brand">Brand</label><input type="text" id="af-brand" required></div>
         <div class="form-field"><label for="af-name">Name</label><input type="text" id="af-name" required></div>
@@ -488,6 +573,7 @@
         <div class="form-field"><label for="af-category">Category</label><input type="text" id="af-category" placeholder="e.g. Eau de Parfum"></div>
       </div>
       <div class="form-row">
+        <div class="form-field"><label for="af-perfumer">Perfumer</label><input type="text" id="af-perfumer" placeholder="e.g. Christine Nagel"></div>
         <div class="form-field">
           <label for="af-rating">Rating</label>
           <select id="af-rating">
@@ -499,15 +585,62 @@
             <option value="5">★★★★★</option>
           </select>
         </div>
-        <div class="form-field">
-          <label for="af-photo">Bottle photo</label>
-          <div class="photo-input-row">
-            <div class="photo-preview" id="af-photo-preview"></div>
-            <input type="file" id="af-photo" accept="image/*">
-          </div>
+      </div>
+      <div class="form-field">
+        <label for="af-photo">Bottle photo</label>
+        <div class="photo-input-row">
+          <div class="photo-preview" id="af-photo-preview"></div>
+          <input type="file" id="af-photo" accept="image/*">
         </div>
       </div>
+
+      <div class="form-section-heading">Notes</div>
+      <div class="form-row">
+        <div class="form-field"><label for="af-top-notes">Top notes</label><input type="text" id="af-top-notes" placeholder="e.g. Bergamot, pink pepper"></div>
+        <div class="form-field"><label for="af-heart-notes">Heart notes</label><input type="text" id="af-heart-notes" placeholder="e.g. Jasmine, iris"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label for="af-base-notes">Base notes</label><input type="text" id="af-base-notes" placeholder="e.g. Sandalwood, musk"></div>
+        <div class="form-field">
+          <label for="af-notes-source">Notes source</label>
+          <select id="af-notes-source">
+            <option value="">Not specified</option>
+            <option value="fragrantica">Fragrantica</option>
+            <option value="own">Your own impression</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-heading">Your words</div>
       <div class="form-field"><label for="af-summary">Your review / summary</label><textarea id="af-summary" placeholder="What you think of it…"></textarea></div>
+      <details class="atlas-details">
+        <summary>Atlas reflections (optional — add these anytime)</summary>
+        <div class="form-field"><label for="af-where">Where does this take me?</label><textarea class="small" id="af-where"></textarea></div>
+        <div class="form-field"><label for="af-weather">What's the weather?</label><textarea class="small" id="af-weather"></textarea></div>
+        <div class="form-field"><label for="af-who-lives">Who lives here?</label><textarea class="small" id="af-who-lives"></textarea></div>
+        <div class="form-field"><label for="af-who-am-i">Who am I when I wear it?</label><textarea class="small" id="af-who-am-i"></textarea></div>
+        <div class="form-field"><label for="af-draws-out">What does it draw out of me?</label><textarea class="small" id="af-draws-out"></textarea></div>
+        <div class="form-field">
+          <label for="af-inhabit">Would I want to spend a whole day here?</label>
+          <select id="af-inhabit">
+            <option value="">Not decided</option>
+            <option value="visit">Visit — lovely, wouldn't live there</option>
+            <option value="live">Live — I'd want to spend a whole day in this</option>
+          </select>
+        </div>
+      </details>
+
+      <div class="form-section-heading">Buying &amp; links</div>
+      <div class="form-row">
+        <div class="form-field"><label for="af-rrp">RRP (£)</label><input type="text" id="af-rrp" inputmode="decimal" placeholder="e.g. 120"></div>
+        <div class="form-field"><label for="af-avg-price">Avg. price seen (£)</label><input type="text" id="af-avg-price" inputmode="decimal" placeholder="e.g. 95"></div>
+      </div>
+      <div class="form-field"><label for="af-discount-note">Discount note</label><input type="text" id="af-discount-note" placeholder="e.g. often 20% off at TFS"></div>
+      <div class="form-row">
+        <div class="form-field"><label for="af-source-url">Brand page link</label><input type="text" id="af-source-url" placeholder="https://…"></div>
+        <div class="form-field"><label for="af-fragrantica-url">Fragrantica link</label><input type="text" id="af-fragrantica-url" placeholder="https://…"></div>
+      </div>
+
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="af-submit">Add fragrance</button>
         <span class="save-status" id="af-status"></span>
@@ -537,6 +670,10 @@ const FAMILY_LABELS = {
 };
 const FAMILY_KEYS = Object.keys(FAMILY_LABELS);
 const COLOR_STORE_KEY = 'atlas-family-colors';
+
+// Wheel layout order — clustered Fresh / Floral / Oriental / Woody, matching
+// the classic fragrance-wheel taxonomy so adjacent wedges feel related.
+const WHEEL_ORDER = ['fresh-citrus', 'fresh-aquatic', 'fresh-green', 'floral', 'oriental-amber', 'gourmand', 'woody', 'leather'];
 
 function loadColors() {
   try {
@@ -576,6 +713,8 @@ let fragrances = [];
 let wishlist = [];
 let activeFamily = null;
 let searchTerm = '';
+let sortField = 'sort_order';
+let groupEnabled = false;
 
 function photoUrl(path) {
   if (!path) return '';
@@ -632,7 +771,7 @@ function renderFilters() {
     const input = document.createElement('input');
     input.type = 'color';
     input.value = rgbToHex(familyColor(key));
-    input.oninput = (e) => { saveColor(key, e.target.value); renderFilters(); renderGrid(); };
+    input.oninput = (e) => { saveColor(key, e.target.value); renderFilters(); renderGrid(); renderWheel(); };
     label.appendChild(input);
     label.appendChild(document.createTextNode(FAMILY_LABELS[key]));
     legend.appendChild(label);
@@ -646,33 +785,191 @@ function rgbToHex(color) {
   return '#' + m.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
 }
 
+function buildCard(f) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.onclick = () => openDetail(f);
+  card.innerHTML = `
+    <div class="family-bar" style="background:${familyColor(f.family)}"></div>
+    <div class="photo-wrap">${f.photo_path ? `<img src="${photoUrl(f.photo_path)}" alt="${f.name} bottle" loading="lazy">` : ''}</div>
+    <div class="brand">${escapeHtml(f.brand)}</div>
+    <div class="name">${escapeHtml(f.name)}</div>
+    <div class="meta-row">
+      <span class="stars">${stars(f.rating)}</span>
+      <span>${escapeHtml(f.category || '')}</span>
+    </div>
+  `;
+  return card;
+}
+
+function sortFragrances(list) {
+  const field = sortField;
+  const copy = [...list];
+  if (field === 'sort_order') {
+    copy.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  } else if (field === 'created_at') {
+    copy.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  } else {
+    copy.sort((a, b) => {
+      const av = (a[field] || '').toString().toLowerCase();
+      const bv = (b[field] || '').toString().toLowerCase();
+      if (!av && bv) return 1;
+      if (av && !bv) return -1;
+      if (!av && !bv) return 0;
+      return av.localeCompare(bv);
+    });
+  }
+  return copy;
+}
+
+function groupLabel(f, field) {
+  if (field === 'created_at') {
+    if (!f.created_at) return 'Date unknown';
+    return new Date(f.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+  }
+  return f[field] || `No ${field}`;
+}
+
+function groupByField(list, field) {
+  const map = new Map();
+  list.forEach((f) => {
+    const label = groupLabel(f, field);
+    if (!map.has(label)) map.set(label, []);
+    map.get(label).push(f);
+  });
+  return Array.from(map.entries());
+}
+
 function renderGrid() {
   const grid = document.getElementById('grid');
   const emptyNote = document.getElementById('empty-note');
   grid.innerHTML = '';
   const term = searchTerm.trim().toLowerCase();
-  const filtered = fragrances.filter((f) => {
+  let filtered = fragrances.filter((f) => {
     if (activeFamily && f.family !== activeFamily) return false;
     if (term && !(`${f.brand} ${f.name}`.toLowerCase().includes(term))) return false;
     return true;
   });
+  filtered = sortFragrances(filtered);
   emptyNote.hidden = filtered.length > 0;
 
-  filtered.forEach((f) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.onclick = () => openDetail(f);
-    card.innerHTML = `
-      <div class="family-bar" style="background:${familyColor(f.family)}"></div>
-      <div class="photo-wrap">${f.photo_path ? `<img src="${photoUrl(f.photo_path)}" alt="${f.name} bottle" loading="lazy">` : ''}</div>
-      <div class="brand">${escapeHtml(f.brand)}</div>
-      <div class="name">${escapeHtml(f.name)}</div>
-      <div class="meta-row">
-        <span class="stars">${stars(f.rating)}</span>
-        <span>${escapeHtml(f.category || '')}</span>
-      </div>
-    `;
-    grid.appendChild(card);
+  const doGroup = groupEnabled && sortField !== 'sort_order';
+  if (doGroup) {
+    grid.className = '';
+    groupByField(filtered, sortField).forEach(([label, items]) => {
+      const block = document.createElement('div');
+      block.className = 'group-block';
+      const heading = document.createElement('h2');
+      heading.className = 'group-heading';
+      heading.textContent = label;
+      const subgrid = document.createElement('div');
+      subgrid.className = 'grid';
+      items.forEach((f) => subgrid.appendChild(buildCard(f)));
+      block.appendChild(heading);
+      block.appendChild(subgrid);
+      grid.appendChild(block);
+    });
+  } else {
+    grid.className = 'grid';
+    filtered.forEach((f) => grid.appendChild(buildCard(f)));
+  }
+}
+
+// --- Fragrance wheel ---
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180; // 0deg points straight up
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function hash01(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; }
+  return (h % 10000) / 10000;
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+function renderWheel() {
+  const svg = document.getElementById('wheel-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const cx = 320, cy = 320;
+  const outerR = 250, innerR = 46;
+  const wedgeAngle = 360 / WHEEL_ORDER.length;
+
+  WHEEL_ORDER.forEach((key, i) => {
+    const startAngle = i * wedgeAngle;
+    const endAngle = startAngle + wedgeAngle;
+    const p0 = polarToXY(cx, cy, outerR, startAngle);
+    const p1 = polarToXY(cx, cy, outerR, endAngle);
+    const large = wedgeAngle > 180 ? 1 : 0;
+    svg.appendChild(svgEl('path', {
+      d: `M ${cx} ${cy} L ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} A ${outerR} ${outerR} 0 ${large} 1 ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Z`,
+      fill: familyColor(key),
+      'fill-opacity': '0.12',
+      stroke: familyColor(key),
+      'stroke-opacity': '0.35',
+      'stroke-width': '1',
+    }));
+
+    const midAngle = startAngle + wedgeAngle / 2;
+    const labelPos = polarToXY(cx, cy, outerR + 20, midAngle);
+    const text = svgEl('text', {
+      x: labelPos.x.toFixed(1), y: labelPos.y.toFixed(1),
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      class: 'wheel-wedge-label',
+      fill: familyColor(key),
+    });
+    text.textContent = FAMILY_LABELS[key];
+    svg.appendChild(text);
+  });
+
+  [1, 2, 3, 4, 5].forEach((n) => {
+    const r = innerR + (outerR - innerR) * (n / 5);
+    svg.appendChild(svgEl('circle', {
+      cx, cy, r: r.toFixed(1), fill: 'none', stroke: 'var(--line)', 'stroke-width': '1', 'stroke-dasharray': '2,4',
+    }));
+  });
+  svg.appendChild(svgEl('circle', { cx, cy, r: innerR, fill: 'none', stroke: 'var(--line)', 'stroke-width': '1' }));
+
+  const tooltip = document.getElementById('wheel-tooltip');
+  const wrap = document.getElementById('wheel-chart-wrap');
+
+  function showWheelTooltip(f, dotEl) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const dotRect = dotEl.getBoundingClientRect();
+    tooltip.innerHTML = `<strong>${escapeHtml(f.brand)}</strong><br>${escapeHtml(f.name)}${f.rating ? ' · ' + stars(f.rating) : ''}`;
+    tooltip.style.left = (dotRect.left - wrapRect.left + dotRect.width / 2) + 'px';
+    tooltip.style.top = (dotRect.top - wrapRect.top) + 'px';
+    tooltip.hidden = false;
+  }
+  function hideWheelTooltip() { tooltip.hidden = true; }
+
+  fragrances.forEach((f) => {
+    if (!WHEEL_ORDER.includes(f.family)) return;
+    const idx = WHEEL_ORDER.indexOf(f.family);
+    const startAngle = idx * wedgeAngle;
+    const jitter = hash01(f.id);
+    const angle = startAngle + wedgeAngle * (0.15 + jitter * 0.7); // keep clear of wedge edges
+    const ratingFrac = f.rating ? Math.min(f.rating, 5) / 5 : 0.04;
+    const r = innerR + (outerR - innerR) * ratingFrac;
+    const pos = polarToXY(cx, cy, r, angle);
+    const dot = svgEl('circle', {
+      cx: pos.x.toFixed(1), cy: pos.y.toFixed(1), r: 6.5,
+      fill: familyColor(f.family), stroke: 'var(--paper)', 'stroke-width': 2,
+      class: 'wheel-dot', tabindex: '0', role: 'button',
+      'aria-label': `${f.brand} ${f.name}`,
+    });
+    dot.addEventListener('mouseenter', () => showWheelTooltip(f, dot));
+    dot.addEventListener('mouseleave', hideWheelTooltip);
+    dot.addEventListener('focus', () => showWheelTooltip(f, dot));
+    dot.addEventListener('blur', hideWheelTooltip);
+    dot.addEventListener('click', () => openDetail(f));
+    svg.appendChild(dot);
   });
 }
 
@@ -851,17 +1148,28 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   const tab = btn.dataset.tab;
   document.getElementById('view-fragrances').hidden = tab !== 'fragrances';
   document.getElementById('view-wishlist').hidden = tab !== 'wishlist';
+  document.getElementById('view-wheel').hidden = tab !== 'wheel';
   document.getElementById('family-filters').style.display = tab === 'fragrances' ? 'flex' : 'none';
-  document.querySelector('.search-row').style.display = tab === 'fragrances' ? 'flex' : 'none';
+  document.getElementById('search-row').style.display = tab === 'fragrances' ? 'flex' : 'none';
+  if (tab === 'wheel') renderWheel();
 });
 
-document.getElementById('legend-toggle').addEventListener('click', () => {
+document.getElementById('wheel-legend-toggle').addEventListener('click', () => {
   const panel = document.getElementById('legend-panel');
   panel.dataset.open = panel.dataset.open === 'true' ? 'false' : 'true';
 });
 
 document.getElementById('search').addEventListener('input', (e) => {
   searchTerm = e.target.value;
+  renderGrid();
+});
+
+document.getElementById('sort-select').addEventListener('change', (e) => {
+  sortField = e.target.value;
+  renderGrid();
+});
+document.getElementById('group-toggle').addEventListener('change', (e) => {
+  groupEnabled = e.target.checked;
   renderGrid();
 });
 
@@ -874,6 +1182,8 @@ document.getElementById('add-fragrance-btn').addEventListener('click', () => {
   document.getElementById('af-photo-preview').innerHTML = '';
   document.getElementById('af-error').hidden = true;
   document.getElementById('af-status').textContent = '';
+  const details = addForm.querySelector('details.atlas-details');
+  if (details) details.open = false;
   addOverlay.hidden = false;
 });
 document.getElementById('close-add').addEventListener('click', () => { addOverlay.hidden = true; });
@@ -897,13 +1207,39 @@ addForm.addEventListener('submit', async (e) => {
   const submitBtn = document.getElementById('af-submit');
   errorEl.hidden = true;
 
-  const brand = document.getElementById('af-brand').value.trim();
-  const name = document.getElementById('af-name').value.trim();
+  const val = (id) => document.getElementById(id).value.trim();
+  const numOrNull = (s) => {
+    if (!s) return null;
+    const n = Number(s.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const brand = val('af-brand');
+  const name = val('af-name');
   const family = document.getElementById('af-family').value;
-  const category = document.getElementById('af-category').value.trim();
+  const category = val('af-category');
+  const perfumer = val('af-perfumer');
   const ratingVal = document.getElementById('af-rating').value;
-  const summary = document.getElementById('af-summary').value.trim();
   const photoFile = document.getElementById('af-photo').files[0];
+
+  const topNotes = val('af-top-notes');
+  const heartNotes = val('af-heart-notes');
+  const baseNotes = val('af-base-notes');
+  const notesSource = document.getElementById('af-notes-source').value;
+
+  const summary = val('af-summary');
+  const wherePlace = val('af-where');
+  const weather = val('af-weather');
+  const whoLivesHere = val('af-who-lives');
+  const whoAmI = val('af-who-am-i');
+  const drawsOut = val('af-draws-out');
+  const inhabit = document.getElementById('af-inhabit').value;
+
+  const rrp = numOrNull(val('af-rrp'));
+  const avgPrice = numOrNull(val('af-avg-price'));
+  const discountNote = val('af-discount-note');
+  const sourceUrl = val('af-source-url');
+  const fragranticaUrl = val('af-fragrantica-url');
 
   if (!brand || !name || !family) {
     errorEl.textContent = 'Brand, name, and family are required.';
@@ -941,9 +1277,25 @@ addForm.addEventListener('submit', async (e) => {
   const { data: insertedRows, error: insErr } = await supabase.from('fragrances').insert({
     brand, name, family,
     category: category || null,
+    perfumer: perfumer || null,
     rating: ratingVal ? Number(ratingVal) : null,
-    summary: summary || null,
     photo_path,
+    top_notes: topNotes || null,
+    heart_notes: heartNotes || null,
+    base_notes: baseNotes || null,
+    notes_source: notesSource || null,
+    summary: summary || null,
+    where_place: wherePlace || null,
+    weather: weather || null,
+    who_lives_here: whoLivesHere || null,
+    who_am_i: whoAmI || null,
+    draws_out: drawsOut || null,
+    inhabit: inhabit || null,
+    rrp,
+    avg_price: avgPrice,
+    discount_note: discountNote || null,
+    source_url: sourceUrl || null,
+    fragrantica_url: fragranticaUrl || null,
     sort_order: maxSort + 1,
   }).select();
 
