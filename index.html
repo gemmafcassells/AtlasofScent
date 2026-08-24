@@ -429,6 +429,23 @@
     color: #a33323; margin-top: 0.8rem;
   }
 
+  .fetch-hint {
+    font-family: 'Inter', sans-serif; font-size: 0.78rem; color: var(--ink-faint);
+    line-height: 1.5; margin: 0 0 0.7rem;
+  }
+  .fetch-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.4rem; }
+  .fetch-row input[type="text"] { flex: 1; min-width: 200px; }
+  .btn-secondary {
+    font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
+    padding: 0.5rem 0.9rem; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(255,255,255,0.5); color: var(--ink-soft);
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn-secondary:disabled { opacity: 0.5; cursor: default; }
+  .fetch-status { font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--ink-soft); min-height: 1.1em; }
+  .fetch-status.error { color: #a33323; }
+  .fetch-status.success { color: #4a6b3f; }
+
   .form-section-heading {
     font-family: 'Inter', sans-serif;
     font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase;
@@ -561,6 +578,23 @@
     <button class="close-btn" id="close-add" aria-label="Close">&times;</button>
     <h2 class="add-heading">Add a fragrance</h2>
     <form id="add-form">
+      <div class="form-section-heading" style="margin-top:0;padding-top:0;border-top:none;">Fetch from Fragrantica</div>
+      <p class="fetch-hint">Paste the fragrance's Fragrantica page URL to pull in the bottle photo automatically. Fragrantica blocks automated requests to the page text itself, so for perfumer and notes, copy the description paragraph from the page (the one starting "X by Y is a...") and paste it below to fill those in too.</p>
+      <div class="fetch-row">
+        <input type="text" id="af-fragrantica-fetch-url" placeholder="https://www.fragrantica.com/perfume/...">
+        <button type="button" class="btn-secondary" id="af-fetch-photo-btn">Fetch photo</button>
+      </div>
+      <div class="fetch-status" id="af-fetch-photo-status"></div>
+
+      <div class="form-field" style="margin-top:0.8rem;">
+        <label for="af-fetch-notes-paste">Paste description paragraph</label>
+        <textarea class="small" id="af-fetch-notes-paste" placeholder="e.g. Black Cedarwood &amp; Juniper by Jo Malone London is a Woody Spicy fragrance… The nose behind this fragrance is Christine Nagel. Top notes are Cumin and Chili Pepper; middle note is Juniper; base note is Cedar."></textarea>
+      </div>
+      <div class="fetch-row">
+        <button type="button" class="btn-secondary" id="af-parse-notes-btn">Parse notes</button>
+      </div>
+      <div class="fetch-status" id="af-parse-notes-status"></div>
+
       <div class="form-section-heading">Basics</div>
       <div class="form-row">
         <div class="form-field"><label for="af-brand">Brand</label><input type="text" id="af-brand" required></div>
@@ -1177,15 +1211,112 @@ document.getElementById('group-toggle').addEventListener('change', (e) => {
 // Add-fragrance form
 const addOverlay = document.getElementById('add-overlay');
 const addForm = document.getElementById('add-form');
+const FRAGRANTICA_FN_URL = 'https://ptffodgnvegflqtvmoaj.supabase.co/functions/v1/fragrantica-fetch';
+let fetchedPhotoPath = null;
 
 document.getElementById('add-fragrance-btn').addEventListener('click', () => {
   addForm.reset();
   document.getElementById('af-photo-preview').innerHTML = '';
   document.getElementById('af-error').hidden = true;
   document.getElementById('af-status').textContent = '';
+  document.getElementById('af-fetch-photo-status').className = 'fetch-status';
+  document.getElementById('af-fetch-photo-status').textContent = '';
+  document.getElementById('af-parse-notes-status').className = 'fetch-status';
+  document.getElementById('af-parse-notes-status').textContent = '';
+  fetchedPhotoPath = null;
   const details = addForm.querySelector('details.atlas-details');
   if (details) details.open = false;
   addOverlay.hidden = false;
+});
+
+document.getElementById('af-fetch-photo-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('af-fetch-photo-btn');
+  const statusEl = document.getElementById('af-fetch-photo-status');
+  const url = document.getElementById('af-fragrantica-fetch-url').value.trim();
+  statusEl.className = 'fetch-status';
+
+  if (!url) {
+    statusEl.textContent = 'Paste a Fragrantica URL first.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = 'fetching photo…';
+  try {
+    const resp = await fetch(FRAGRANTICA_FN_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        url,
+        brand: document.getElementById('af-brand').value.trim(),
+        name: document.getElementById('af-name').value.trim(),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.photo_path) {
+      statusEl.textContent = data.error || data.photo_error || 'Could not fetch a photo for that page.';
+      statusEl.classList.add('error');
+    } else {
+      fetchedPhotoPath = data.photo_path;
+      document.getElementById('af-photo-preview').innerHTML =
+        `<img src="${photoUrl(fetchedPhotoPath)}" alt="fetched bottle photo">`;
+      const fragUrlField = document.getElementById('af-fragrantica-url');
+      if (!fragUrlField.value.trim()) fragUrlField.value = url;
+      statusEl.textContent = "Photo added below — choose a file instead if you'd rather use your own.";
+      statusEl.classList.add('success');
+    }
+  } catch (e) {
+    statusEl.textContent = 'Something went wrong reaching the fetch service.';
+    statusEl.classList.add('error');
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('af-parse-notes-btn').addEventListener('click', () => {
+  const statusEl = document.getElementById('af-parse-notes-status');
+  const text = document.getElementById('af-fetch-notes-paste').value.trim();
+  statusEl.className = 'fetch-status';
+
+  if (!text) {
+    statusEl.textContent = 'Paste the description paragraph first.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  const noseMatch = text.match(/nose behind this fragrance (?:is|are) ([^.]+)\./i);
+  const structured = text.match(
+    /top notes? (?:is|are) (.+?);\s*(?:middle|heart) notes? (?:is|are) (.+?);\s*base notes? (?:is|are) (.+?)\./i,
+  );
+  const flat = !structured ? text.match(/fragrance features (.+?)\./i) : null;
+
+  const filled = [];
+  if (noseMatch) {
+    const perfumerField = document.getElementById('af-perfumer');
+    if (!perfumerField.value.trim()) {
+      perfumerField.value = noseMatch[1].trim();
+      filled.push('perfumer');
+    }
+  }
+  if (structured) {
+    const topF = document.getElementById('af-top-notes');
+    const heartF = document.getElementById('af-heart-notes');
+    const baseF = document.getElementById('af-base-notes');
+    if (!topF.value.trim()) { topF.value = structured[1].trim(); filled.push('top notes'); }
+    if (!heartF.value.trim()) { heartF.value = structured[2].trim(); filled.push('heart notes'); }
+    if (!baseF.value.trim()) { baseF.value = structured[3].trim(); filled.push('base notes'); }
+    const srcF = document.getElementById('af-notes-source');
+    if (!srcF.value) srcF.value = 'fragrantica';
+  }
+
+  if (filled.length) {
+    statusEl.textContent = `Filled in ${filled.join(', ')}.`;
+    statusEl.classList.add('success');
+  } else if (flat) {
+    statusEl.textContent = `Fragrantica lists: ${flat[1].trim()} — no top/heart/base breakdown given, add manually if you'd like.`;
+  } else {
+    statusEl.textContent = "Couldn't find a recognizable pattern in that text — try pasting the full paragraph, or fill notes in manually.";
+    statusEl.classList.add('error');
+  }
 });
 document.getElementById('close-add').addEventListener('click', () => { addOverlay.hidden = true; });
 addOverlay.addEventListener('click', (e) => { if (e.target.id === 'add-overlay') addOverlay.hidden = true; });
@@ -1251,7 +1382,7 @@ addForm.addEventListener('submit', async (e) => {
   submitBtn.disabled = true;
   statusEl.textContent = 'saving…';
 
-  let photo_path = null;
+  let photo_path = fetchedPhotoPath;
   if (photoFile) {
     const ext = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
     const base = slugify(`${brand}-${name}`) || 'fragrance';

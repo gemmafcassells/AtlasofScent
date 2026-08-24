@@ -1,4 +1,4 @@
-const CACHE = 'atlas-of-scent-v4';
+const CACHE = 'atlas-of-scent-v5';
 const SHELL = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
